@@ -265,7 +265,7 @@ func (mw *GinJWTMiddleware) MiddlewareInit() error {
 }
 
 // MiddlewareFunc makes GinJWTMiddleware implement the Middleware interface.
-func (mw *GinJWTMiddleware) MiddlewareFunc() gin.HandlerFunc {
+func (mw *GinJWTMiddleware) MiddlewareFunc(authorizedRoles []string) gin.HandlerFunc {
 	if err := mw.MiddlewareInit(); err != nil {
 		return func(c *gin.Context) {
 			mw.unauthorized(c, http.StatusInternalServerError, mw.HTTPStatusMessageFunc(err, nil))
@@ -274,12 +274,12 @@ func (mw *GinJWTMiddleware) MiddlewareFunc() gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		mw.middlewareImpl(c)
+		mw.middlewareImpl(authorizedRoles, c)
 		return
 	}
 }
 
-func (mw *GinJWTMiddleware) middlewareImpl(c *gin.Context) {
+func (mw *GinJWTMiddleware) middlewareImpl(authorizedRoles []string, c *gin.Context) {
 	token, err := mw.parseToken(c)
 
 	if err != nil {
@@ -288,6 +288,11 @@ func (mw *GinJWTMiddleware) middlewareImpl(c *gin.Context) {
 	}
 
 	claims := token.Claims.(jwt.MapClaims)
+
+	if len(authorizedRoles) != 0 && !stringInSlice(claims["role"].(string), authorizedRoles) {
+		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
+		return
+	}
 
 	id := mw.IdentityHandler(claims)
 	c.Set("JWT_PAYLOAD", claims)
@@ -299,6 +304,15 @@ func (mw *GinJWTMiddleware) middlewareImpl(c *gin.Context) {
 	}
 
 	c.Next()
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 // LoginHandler can be used by clients to get a jwt token.
