@@ -290,7 +290,7 @@ func (mw *GinJWTMiddleware) middlewareImpl(authorizedRoles []string, c *gin.Cont
 	claims := token.Claims.(jwt.MapClaims)
 
 	if len(authorizedRoles) != 0 && !stringInSlice(claims["role"].(string), authorizedRoles) {
-		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, c))
+		mw.unauthorized(c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrForbidden, c))
 		return
 	}
 
